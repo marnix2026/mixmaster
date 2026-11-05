@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Esory ny zip
-        run: unzip -q MixMaster.zip && ls MixMaster
+        run: unzip -q MixMaster-1.zip && ls MixMaster
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
