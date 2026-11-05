@@ -1,0 +1,53 @@
+name: Build APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Esory ny zip
+        run: unzip -q MixMaster.zip && ls MixMaster
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Build (MP3 - naman14)
+        id: mp3a
+        continue-on-error: true
+        working-directory: MixMaster
+        run: gradle :app:assembleDebug -Pmp3Dep=com.github.naman14:TAndroidLame:1.1 --stacktrace
+      - name: Build (MP3 - NorthernCaptain)
+        id: mp3b
+        if: steps.mp3a.outcome == 'failure'
+        continue-on-error: true
+        working-directory: MixMaster
+        run: gradle :app:assembleDebug -Pmp3Dep=com.github.NorthernCaptain:TAndroidLame:1.1 --stacktrace
+      - name: Build (tsy misy MP3)
+        if: steps.mp3a.outcome == 'failure' && steps.mp3b.outcome == 'failure'
+        working-directory: MixMaster
+        run: gradle :app:assembleDebug --stacktrace
+      - name: Anarana APK
+        run: |
+          cp MixMaster/app/build/outputs/apk/debug/app-debug.apk MixMaster.apk
+          if [ "${{ steps.mp3a.outcome }}" = "success" ]; then V="miaraka amin'ny MP3 (naman14)";
+          elif [ "${{ steps.mp3b.outcome }}" = "success" ]; then V="miaraka amin'ny MP3 (NorthernCaptain)";
+          else V="TSY misy MP3 (WAV + M4A ihany)"; fi
+          echo "VARIANT=$V" >> "$GITHUB_ENV"
+          ls -l MixMaster.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MixMaster-apk
+          path: MixMaster.apk
+      - name: Release latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest MixMaster.apk --title "MixMaster (build ${{ github.run_number }})" --notes "APK debug. Karazana: $VARIANT"
